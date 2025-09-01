@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useState, useEffect, useCallback } from "react";
+import type React from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -18,7 +19,7 @@ import {
   Pagination,
   PaginationContent,
   PaginationItem,
-  PaginationLink,            
+  PaginationLink,
   PaginationNext,
   PaginationPrevious,
 } from "@/components/ui/pagination";
@@ -28,7 +29,7 @@ import {
   Phone,
   MapPin,
   Users,
-  IndianRupee ,
+  IndianRupee,
   TrendingUp,
   Search,
   Eye,
@@ -49,7 +50,21 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 interface ReferralPartner {
   _id: string;
@@ -101,6 +116,28 @@ interface Statistics {
   };
 }
 
+interface Category {
+  _id: string;
+  name: string;
+  type: "course" | "country";
+  isActive?: boolean;
+}
+
+interface FormData {
+  name: string;
+  email: string;
+  phone: string;
+  courseApplied: string; // ID
+  courseAppliedName: string; // Display name
+  countryPreference: string; // ID
+  countryPreferenceName: string; // Display name
+  status: "New" | "In Progress" | "Applied" | "Admitted" | "Rejected";
+  description: string;
+  referralPartner: string; // referral partner ID
+  commissionAmount: number;
+  commissionStatus: "Pending" | "Paid";
+}
+
 export const ReferralPartnerDetail = () => {
   const params = useParams();
   const router = useRouter();
@@ -132,6 +169,30 @@ export const ReferralPartnerDetail = () => {
     name: string;
   } | null>(null);
 
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [editingLead, setEditingLead] = useState<StudentLead | null>(null);
+
+  const [courseCategories, setCourseCategories] = useState<Category[]>([]);
+  const [countryCategories, setCountryCategories] = useState<Category[]>([]);
+  const [activeReferralPartners, setActiveReferralPartners] = useState<
+    ReferralPartner[]
+  >([]);
+
+  const [formData, setFormData] = useState<FormData>({
+    name: "",
+    email: "",
+    phone: "",
+    courseApplied: "",
+    courseAppliedName: "",
+    countryPreference: "",
+    countryPreferenceName: "",
+    status: "New",
+    description: "",
+    referralPartner: "",
+    commissionAmount: 0,
+    commissionStatus: "Pending",
+  });
+
   // Fetch partner details
   const fetchPartner = useCallback(async () => {
     try {
@@ -159,32 +220,80 @@ export const ReferralPartnerDetail = () => {
   }, [params.id, router]);
 
   // Fetch student leads for this partner
-  const fetchStudentLeads = useCallback(async (page = 1, search = "") => {
-    try {
-      setLeadsLoading(true);
-      const response = await axios.get(
-        `/api/studentleads?page=${page}&limit=10&search=${search}&referralPartnerId=${params.id}`
-      );
-      const data = response.data;
+  const fetchStudentLeads = useCallback(
+    async (page = 1, search = "") => {
+      try {
+        setLeadsLoading(true);
+        const response = await axios.get(
+          `/api/studentleads?page=${page}&limit=10&search=${search}&referralPartnerId=${params.id}`
+        );
+        const data = response.data;
 
+        if (data.success) {
+          setStudentLeads(data.data);
+          setTotalPages(data.pagination.pages);
+          setCurrentPage(data.pagination.page);
+          calculateStatistics(data.data);
+        }
+      } catch (error: unknown) {
+        const axiosError = error as {
+          response?: { data?: { error?: string } };
+        };
+        if (axiosError.response?.data?.error) {
+          toast.error(axiosError.response.data.error);
+        } else {
+          toast.error("Failed to fetch student leads");
+        }
+        console.error("Error fetching student leads:", error);
+      } finally {
+        setLeadsLoading(false);
+      }
+    },
+    [params.id]
+  );
+
+  // Fetch dropdown data
+  const fetchReferralPartners = useCallback(async () => {
+    try {
+      const response = await axios.get("/api/referralpartner?all=true");
+      const data = response.data;
       if (data.success) {
-        setStudentLeads(data.data);
-        setTotalPages(data.pagination.pages);
-        setCurrentPage(data.pagination.page);
-        calculateStatistics(data.data);
+        const onlyActive = (data.data as ReferralPartner[]).filter(
+          (p) => p.status === "Active"
+        );
+        setActiveReferralPartners(onlyActive);
       }
-    } catch (error: unknown) {
-      const axiosError = error as { response?: { data?: { error?: string } } };
-      if (axiosError.response?.data?.error) {
-        toast.error(axiosError.response.data.error);
-      } else {
-        toast.error("Failed to fetch student leads");
-      }
-      console.error("Error fetching student leads:", error);
-    } finally {
-      setLeadsLoading(false);
+    } catch (error) {
+      console.error("Error fetching referral partners:", error);
     }
-  }, [params.id]);
+  }, []);
+
+  const fetchCategories = useCallback(async () => {
+    try {
+      const [courseResponse, countryResponse] = await Promise.all([
+        axios.get("/api/studentleads/category?type=course"),
+        axios.get("/api/studentleads/category?type=country"),
+      ]);
+      if (courseResponse.data?.success) {
+        setCourseCategories(courseResponse.data.data);
+      }
+      if (countryResponse.data?.success) {
+        const activeCountries = countryResponse.data.data.filter(
+          (c: Category) => c.isActive !== false
+        );
+        setCountryCategories(activeCountries);
+      }
+    } catch (error) {
+      console.error("Error fetching categories:", error);
+      toast.error("Error fetching categories");
+    }
+  }, []);
+
+  useEffect(() => {
+    // load dropdown data once
+    fetchReferralPartners();
+    fetchCategories();
+  }, [fetchReferralPartners, fetchCategories]);
 
   // Calculate statistics from student leads
   const calculateStatistics = (leads: StudentLead[]) => {
@@ -218,8 +327,9 @@ export const ReferralPartnerDetail = () => {
   useEffect(() => {
     if (params.id) {
       fetchPartner();
+      fetchStudentLeads();
     }
-  }, [params.id, fetchPartner]);
+  }, [params.id, fetchPartner, fetchStudentLeads]);
 
   useEffect(() => {
     if (params.id) {
@@ -236,6 +346,91 @@ export const ReferralPartnerDetail = () => {
   const handleViewLead = (lead: StudentLead) => {
     setViewingLead(lead);
     setIsViewDialogOpen(true);
+  };
+
+  const handleEditLead = (lead: StudentLead) => {
+    setEditingLead(lead);
+
+    // Pre-populate names using categories (like StudentLeads.tsx)
+    const selectedCourse = courseCategories.find(
+      (c) => c._id === lead.courseApplied
+    );
+    const selectedCountry = countryCategories.find(
+      (c) => c._id === lead.countryPreference
+    );
+
+    setFormData({
+      name: lead.name,
+      email: lead.email,
+      phone: lead.phone,
+      courseApplied: lead.courseApplied,
+      courseAppliedName: selectedCourse?.name || lead.courseAppliedName || "",
+      countryPreference: lead.countryPreference,
+      countryPreferenceName:
+        selectedCountry?.name || lead.countryPreferenceName || "",
+      status: lead.status,
+      description: lead.description || "",
+      referralPartner: lead.referralPartner,
+      commissionAmount: lead.commissionAmount,
+      commissionStatus: lead.commissionStatus,
+    });
+
+    setIsEditDialogOpen(true);
+  };
+
+  const onSubmitEdit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingLead) return;
+
+    // Minimal required validation
+    if (
+      !formData.name ||
+      !formData.email ||
+      !formData.phone ||
+      !formData.courseApplied ||
+      !formData.countryPreference ||
+      !formData.referralPartner
+    ) {
+      toast.error("Please fill in all required fields");
+      return;
+    }
+
+    try {
+      const payload = {
+        name: formData.name,
+        email: formData.email,
+        phone: formData.phone,
+        courseApplied: formData.courseApplied,
+        countryPreference: formData.countryPreference,
+        status: formData.status,
+        description: formData.description,
+        referralPartner: formData.referralPartner,
+        commissionAmount: formData.commissionAmount,
+        commissionStatus: formData.commissionStatus,
+      };
+
+      const response = await axios.put(
+        `/api/studentleads/${editingLead._id}`,
+        payload
+      );
+      const result = response.data;
+
+      if (result.success) {
+        toast.success("Student lead updated successfully!");
+        setIsEditDialogOpen(false);
+        setEditingLead(null);
+        // refresh list and stats
+        fetchStudentLeads(currentPage, searchTerm);
+      }
+    } catch (error: unknown) {
+      const axiosError = error as { response?: { data?: { error?: string } } };
+      if (axiosError.response?.data?.error) {
+        toast.error(axiosError.response.data.error);
+      } else {
+        toast.error("An unexpected error occurred");
+      }
+      console.error("Error updating student lead:", error);
+    }
   };
 
   const handleDeleteLead = (id: string, name: string) => {
@@ -362,11 +557,11 @@ export const ReferralPartnerDetail = () => {
             <div>
               <p className="text-sm text-muted-foreground">Partner Type</p>
               <Badge
-               className={
-                            partner.partnerType === "Agency"
-                              ? "bg-[#1A73E8] text-white"
-                              : ""
-                          }
+                className={
+                  partner.partnerType === "Agency"
+                    ? "bg-[#1A73E8] text-white"
+                    : ""
+                }
                 variant={
                   partner.partnerType === "Agency" ? "default" : "secondary"
                 }
@@ -380,11 +575,11 @@ export const ReferralPartnerDetail = () => {
                 variant={
                   partner.status === "Active" ? "default" : "destructive"
                 }
-                 className={
-                            partner.partnerType === "Agency"
-                              ? "bg-[#1A73E8] text-white"
-                              : ""
-                          }
+                className={
+                  partner.partnerType === "Agency"
+                    ? "bg-[#1A73E8] text-white"
+                    : ""
+                }
               >
                 {partner.status}
               </Badge>
@@ -434,10 +629,10 @@ export const ReferralPartnerDetail = () => {
         <Card>
           <CardContent className="p-6">
             <div className="flex items-center space-x-2">
-              <IndianRupee  className="h-8 w-8 text-green-600" />
+              <IndianRupee className="h-8 w-8 text-green-600" />
               <div>
                 <p className="text-2xl font-bold">
-                ₹{statistics.totalCommission.toFixed(2)}
+                  ₹{statistics.totalCommission.toFixed(2)}
                 </p>
                 <p className="text-sm text-muted-foreground">
                   Total Commission
@@ -453,7 +648,7 @@ export const ReferralPartnerDetail = () => {
               <TrendingUp className="h-8 w-8 text-green-500" />
               <div>
                 <p className="text-2xl font-bold">
-                ₹{statistics.paidCommission.toFixed(2)}
+                  ₹{statistics.paidCommission.toFixed(2)}
                 </p>
                 <p className="text-sm text-muted-foreground">Paid Commission</p>
               </div>
@@ -464,10 +659,10 @@ export const ReferralPartnerDetail = () => {
         <Card>
           <CardContent className="p-6">
             <div className="flex items-center space-x-2">
-              <IndianRupee  className="h-8 w-8 text-orange-600" />
+              <IndianRupee className="h-8 w-8 text-orange-600" />
               <div>
                 <p className="text-2xl font-bold">
-                ₹{statistics.pendingCommission.toFixed(2)}
+                  ₹{statistics.pendingCommission.toFixed(2)}
                 </p>
                 <p className="text-sm text-muted-foreground">
                   Pending Commission
@@ -491,7 +686,11 @@ export const ReferralPartnerDetail = () => {
                   <div className="text-2xl font-bold">{count}</div>
                   <Badge
                     variant={getStatusBadgeVariant(status)}
-                    className={`mt-1${status === "Admitted" || status === "In Progress" ? " bg-[#1A73E8] text-white" : ""}`}
+                    className={`mt-1${
+                      status === "Admitted" || status === "In Progress"
+                        ? " bg-[#1A73E8] text-white"
+                        : ""
+                    }`}
                   >
                     {status}
                   </Badge>
@@ -523,7 +722,6 @@ export const ReferralPartnerDetail = () => {
                 />
               </div>
             </div>
-          
           </div>
 
           {leadsLoading ? (
@@ -553,17 +751,33 @@ export const ReferralPartnerDetail = () => {
                       <TableCell className="font-medium">{lead.name}</TableCell>
                       <TableCell>{lead.email}</TableCell>
                       <TableCell>{lead.phone}</TableCell>
-                      <TableCell>{lead.courseAppliedName || lead.courseApplied}</TableCell>
-                      <TableCell>{lead.countryPreferenceName || lead.countryPreference}</TableCell>
                       <TableCell>
-                        <Badge variant={getStatusBadgeVariant(lead.status)}>
+                        {lead.courseAppliedName || lead.courseApplied}
+                      </TableCell>
+                      <TableCell>
+                        {countryCategories.find(
+                          (c) => c._id === lead.countryPreference
+                        )?.name ||
+                          lead.countryPreferenceName ||
+                          lead.countryPreference}
+                      </TableCell>
+                      <TableCell>
+                        <Badge 
+                        variant={getStatusBadgeVariant(lead.status)} 
+                        className={`text-xs${
+                              lead.status === "Admitted" ||
+                              lead.status === "In Progress"
+                                ? " bg-[#1A73E8] text-white"
+                                : ""
+                            }`}
+                        >
                           {lead.status}
                         </Badge>
                       </TableCell>
                       <TableCell>
                         <div className="flex grid-cols-2 gap-1">
                           <span className="text-sm font-medium">
-                          ₹{lead.commissionAmount}
+                            ₹{lead.commissionAmount}
                           </span>
                           <Badge
                             variant={getCommissionStatusBadgeVariant(
@@ -575,7 +789,7 @@ export const ReferralPartnerDetail = () => {
                           </Badge>
                         </div>
                       </TableCell>
-                     
+
                       <TableCell>
                         <div className="flex items-center space-x-2">
                           <Button
@@ -591,14 +805,7 @@ export const ReferralPartnerDetail = () => {
                             variant="ghost"
                             className="cursor-pointer"
                             size="sm"
-                            onClick={() => {
-                              // Store the lead data in sessionStorage for the edit modal
-                              sessionStorage.setItem(
-                                "editStudentLead",
-                                JSON.stringify(lead)
-                              );
-                              router.push("/student-lead?action=edit");
-                            }}
+                            onClick={() => handleEditLead(lead)}
                             title="Edit Lead"
                           >
                             <Edit className="h-4 w-4" />
@@ -717,6 +924,246 @@ export const ReferralPartnerDetail = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Edit Student Lead Modal */}
+      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Edit Student Lead</DialogTitle>
+          </DialogHeader>
+          <form onSubmit={onSubmitEdit} className="space-y-6">
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="edit-name">
+                  Name <span className="text-red-500">*</span>
+                </Label>
+                <Input
+                  id="edit-name"
+                  value={formData.name}
+                  onChange={(e) =>
+                    setFormData({ ...formData, name: e.target.value })
+                  }
+                  placeholder="Enter student name"
+                  className="mt-2"
+                />
+              </div>
+              <div>
+                <Label htmlFor="edit-email">
+                  Email <span className="text-red-500">*</span>
+                </Label>
+                <Input
+                  id="edit-email"
+                  type="email"
+                  value={formData.email}
+                  onChange={(e) =>
+                    setFormData({ ...formData, email: e.target.value })
+                  }
+                  placeholder="Enter email address"
+                  className="mt-2"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="edit-phone">
+                  Phone <span className="text-red-500">*</span>
+                </Label>
+                <Input
+                  id="edit-phone"
+                  value={formData.phone}
+                  onChange={(e) =>
+                    setFormData({ ...formData, phone: e.target.value })
+                  }
+                  placeholder="Enter phone number"
+                  className="mt-2"
+                />
+              </div>
+              <div>
+                <Label htmlFor="edit-referralPartner">
+                  Referral Partner <span className="text-red-500">*</span>
+                </Label>
+                <Select
+                  value={formData.referralPartner}
+                  onValueChange={(value) => {
+                    setFormData({ ...formData, referralPartner: value });
+                  }}
+                >
+                  <SelectTrigger className="mt-2">
+                    <SelectValue placeholder="Select referral partner" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {activeReferralPartners.map((p) => (
+                      <SelectItem key={p._id} value={p._id}>
+                        {p.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="edit-courseApplied">
+                  Course Applied <span className="text-red-500">*</span>
+                </Label>
+                <Select
+                  value={formData.courseAppliedName}
+                  onValueChange={(value) => {
+                    const selectedCourse = courseCategories.find(
+                      (c) => c.name === value
+                    );
+                    if (selectedCourse) {
+                      setFormData({
+                        ...formData,
+                        courseApplied: selectedCourse._id,
+                        courseAppliedName: selectedCourse.name,
+                      });
+                    }
+                  }}
+                >
+                  <SelectTrigger className="mt-2">
+                    <SelectValue placeholder="Select course" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {courseCategories.map((course) => (
+                      <SelectItem key={course._id} value={course.name}>
+                        {course.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label htmlFor="edit-countryPreference">
+                  Country Preference <span className="text-red-500">*</span>
+                </Label>
+                <Select
+                  value={formData.countryPreferenceName}
+                  onValueChange={(value) => {
+                    const selectedCountry = countryCategories.find(
+                      (c) => c.name === value
+                    );
+                    if (selectedCountry) {
+                      setFormData({
+                        ...formData,
+                        countryPreference: selectedCountry._id,
+                        countryPreferenceName: selectedCountry.name,
+                      });
+                    }
+                  }}
+                >
+                  <SelectTrigger className="mt-2">
+                    <SelectValue placeholder="Select country" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {countryCategories.map((country) => (
+                      <SelectItem key={country._id} value={country.name}>
+                        {country.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="edit-status">Status</Label>
+                <Select
+                  value={formData.status}
+                  onValueChange={(
+                    value:
+                      | "New"
+                      | "In Progress"
+                      | "Applied"
+                      | "Admitted"
+                      | "Rejected"
+                  ) => setFormData({ ...formData, status: value })}
+                >
+                  <SelectTrigger className="mt-2 w-full">
+                    <SelectValue placeholder="Select status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="New">New</SelectItem>
+                    <SelectItem value="In Progress">In Progress</SelectItem>
+                    <SelectItem value="Applied">Applied</SelectItem>
+                    <SelectItem value="Admitted">Admitted</SelectItem>
+                    <SelectItem value="Rejected">Rejected</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label htmlFor="edit-commissionStatus">Commission Status</Label>
+                <Select
+                  value={formData.commissionStatus}
+                  onValueChange={(value: "Pending" | "Paid") =>
+                    setFormData({ ...formData, commissionStatus: value })
+                  }
+                >
+                  <SelectTrigger className="mt-2">
+                    <SelectValue placeholder="Select commission status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Pending">Pending</SelectItem>
+                    <SelectItem value="Paid">Paid</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <div>
+              <Label htmlFor="edit-commissionAmount">Commission Amount</Label>
+              <Input
+                id="edit-commissionAmount"
+                type="number"
+                min="0"
+                step="0.01"
+                value={formData.commissionAmount.toString()}
+                onChange={(e) =>
+                  setFormData({
+                    ...formData,
+                    commissionAmount: Number.parseFloat(e.target.value) || 0,
+                  })
+                }
+                placeholder="Enter commission amount (₹)"
+                className="mt-2"
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="edit-description">Description</Label>
+              <Textarea
+                id="edit-description"
+                value={formData.description}
+                onChange={(e) =>
+                  setFormData({ ...formData, description: e.target.value })
+                }
+                placeholder="Enter additional notes or description"
+                className="mt-2"
+                rows={3}
+              />
+            </div>
+
+            <div className="flex justify-end space-x-2 pt-4">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  setIsEditDialogOpen(false);
+                  setEditingLead(null);
+                }}
+              >
+                Cancel
+              </Button>
+              <Button className="bg-[#1A73E8] hover:bg-[#1669C1]" type="submit">
+                Update Student Lead
+              </Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

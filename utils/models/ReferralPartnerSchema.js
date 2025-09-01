@@ -14,6 +14,7 @@ const ReferralPartnerSchema = new mongoose.Schema({
   phone: {
     type: String,
     required: [true, 'Phone number is required'],
+    unique: true,
   },
   address: {
     type: String,

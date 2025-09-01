@@ -10,7 +10,7 @@ interface ValidationError extends Error {
   name: string;
   errors: Record<string, { message: string }>;
 } 
-
+ 
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -51,16 +51,20 @@ export async function PUT(
     const { id } = await params;
     const body = await request.json();
 
-    // Check if another partner with the same email exists (excluding current partner)
-    if (body.email) {
+    // Check if another partner with the same email or phone exists (excluding current partner)
+    if (body.email || body.phone) {
       const existingPartner = await ReferralPartner.findOne({
-        email: body.email.toLowerCase(),
+        $or: [
+          { email: body.email?.toLowerCase() },
+          { phone: body.phone }
+        ],
         _id: { $ne: id } // Exclude current partner from check
       });
 
       if (existingPartner) {
+        const field = existingPartner.email === body.email?.toLowerCase() ? 'email' : 'phone';
         return NextResponse.json(
-          { success: false, error: "A partner with this email already exists" },
+          { success: false, error: `A partner with this ${field} already exists` },
           { status: 400 }
         );
       }

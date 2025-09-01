@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import connectDB from "@/utils/config/connectDB";
 import StudentLeads from "@/utils/models/StudentLeadsSchema";
-import ReferralPartner from "@/utils/models/ReferralPartnerSchema";
 
 
 
@@ -10,55 +9,60 @@ interface ValidationError extends Error {
   errors: Record<string, { message: string }>;
 }
 
-interface QueryFilter {  
-  referralPartner?: string;
-  $or?: Array<{
-    name?: { $regex: string; $options: string };
-    email?: { $regex: string; $options: string };
-    phone?: { $regex: string; $options: string };
-    courseApplied?: { $regex: string; $options: string };
-    countryPreference?: { $regex: string; $options: string };
-  }>;
-}
-
 export async function GET(request: NextRequest) {
   try {
     await connectDB();
 
     const { searchParams } = new URL(request.url);
+    const all = searchParams.get("all") === "true";
     const page = parseInt(searchParams.get("page") || "1");
-    const limit = parseInt(searchParams.get("limit") || "10");
+    const limit = all ? 0 : parseInt(searchParams.get("limit") || "10");
     const search = searchParams.get("search") || "";
     const referralPartnerId = searchParams.get("referralPartnerId");
 
-    const skip = (page - 1) * limit;
+    const skip = all ? 0 : (page - 1) * limit;
 
 
-    const query: QueryFilter = {};
+    const query: Record<string, unknown> = {};
 
     // Filter by referral partner if provided
     if (referralPartnerId) {
-      query.referralPartner = referralPartnerId;  // Changed to match the actual field in database
+      query.referralPartner = referralPartnerId;
     }
 
     // Search functionality
     if (search) {
+      const searchPattern = new RegExp(search, 'i');
       query.$or = [
-        { name: { $regex: search, $options: "i" } },
-        { email: { $regex: search, $options: "i" } },
-        { phone: { $regex: search, $options: "i" } },
-        { courseApplied: { $regex: search, $options: "i" } },
-        { countryPreference: { $regex: search, $options: "i" } }
+        { name: searchPattern },
+        { email: searchPattern },
+        { phone: searchPattern },
+        { 'courseAppliedName': searchPattern },
+        { 'countryPreferenceName': searchPattern }
       ];
     }
 
-    const studentLeads = await StudentLeads.find(query)
-      .populate('courseApplied', 'name')
-      .populate('countryPreference', 'name')
-      .populate('referralPartner', 'name')
-      .sort({ createdAt: -1 })
-      .skip(skip)
-      .limit(limit);
+    let baseQuery = StudentLeads.find(query)
+      .populate({
+        path: 'courseApplied',
+        select: 'name'
+      })
+      .populate({
+        path: 'countryPreference',
+        select: 'name'
+      })
+      .populate({
+        path: 'referralPartner',
+        select: 'name'
+      })
+      .sort({ createdAt: -1 });
+
+    if (!all) {
+      baseQuery = baseQuery.skip(skip).limit(limit);
+    }
+
+    const studentLeads = await baseQuery;
+
 
     // Transform the populated data
     const transformedLeads = studentLeads.map(lead => {
@@ -112,11 +116,17 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json();
     
-    // Check if student with same email already exists
-    const existingStudent = await StudentLeads.findOne({ email: body.email });
+    // Check if student with same email or phone already exists
+    const existingStudent = await StudentLeads.findOne({
+      $or: [
+        { email: body.email },
+        { phone: body.phone }
+      ]
+    });
     if (existingStudent) {
+      const field = existingStudent.email === body.email ? 'email' : 'phone';
       return NextResponse.json(
-        { success: false, error: "A student with this email already exists" },
+        { success: false, error: `A student with this ${field} already exists` },
         { status: 400 }
       );
     }

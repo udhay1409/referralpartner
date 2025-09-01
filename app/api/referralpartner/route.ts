@@ -10,7 +10,7 @@ interface ValidationError extends Error {
   name: string;
   errors: Record<string, { message: string }>; 
 }
-
+ 
 export async function GET(request: NextRequest) {
   try {
     await connectDB(); 
@@ -73,21 +73,27 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json();
 
-    // Check if partner with same email exists
-    if (body.email) {
+    // Check if partner with same email or phone exists
+    if (body.email || body.phone) {
       const existingPartner = await ReferralPartner.findOne({
-        email: body.email.toLowerCase()
+        $or: [
+          { email: body.email?.toLowerCase() },
+          { phone: body.phone }
+        ]
       });
 
       if (existingPartner) {
+        const field = existingPartner.email === body.email?.toLowerCase() ? 'email' : 'phone';
         return NextResponse.json(
-          { success: false, error: "A partner with this email already exists" },
+          { success: false, error: `A partner with this ${field} already exists` },
           { status: 400 }
         );
       }
 
       // Convert email to lowercase
-      body.email = body.email.toLowerCase();
+      if (body.email) {
+        body.email = body.email.toLowerCase();
+      }
     }
 
     const partner = new ReferralPartner(body);

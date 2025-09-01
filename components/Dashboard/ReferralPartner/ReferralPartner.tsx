@@ -198,61 +198,55 @@ export const ReferralPartner = () => {
           `/api/referralpartner/${editingPartner._id}`,
           data
         );
-        const result = response.data;
-
-        if (result.success) {
-          toast.success("Partner updated successfully!");
-          setIsEditDialogOpen(false);
-          setEditingPartner(null);
-          form.reset();
-          fetchPartners(currentPage, searchTerm);
-        } else {
-          toast.error(result.error || "Failed to update partner");
-        }
+        
+        toast.success("Partner updated successfully!");
+        setIsEditDialogOpen(false);
+        setEditingPartner(null);
+        form.reset();
+        fetchPartners(currentPage, searchTerm);
       } else {
         // Create new partner
         const response = await axios.post("/api/referralpartner", data);
-        const result = response.data;
-
-        if (result.success) {
-          toast.success("Partner created successfully!");
-          setIsDialogOpen(false);
-          form.reset();
-          fetchPartners(currentPage, searchTerm);
-        } else {
-          toast.error(result.error || "Failed to create partner");
-        }
+        
+        toast.success("Partner created successfully!");
+        setIsDialogOpen(false);
+        form.reset();
+        fetchPartners(currentPage, searchTerm);
       }
     } catch (error: unknown) {
-      let errorMessage = "An unexpected error occurred";
-      
-      if (isAxiosError(error) && error.response?.data?.error) {
-        // Handle known error cases
-        const knownErrors = [
-          "Partner already exists",
-          "A partner with this email already exists",
-          "Email already registered",
-          "Duplicate email address"
-        ];
+      // Define known validation error patterns
+      const knownValidationErrors = [
+        "Partner already exists",
+        "A partner with this email already exists",
+        "A partner with this phone already exists",
+        "Email already registered",
+        "Duplicate email address"
+      ];
+
+      if (axios.isAxiosError(error)) {
+        const errorMessage = error.response?.data?.error || "An error occurred while submitting the form";
         
-        errorMessage = error.response.data.error;
-        
-        // Only log to console if it's not a known error
-        if (!knownErrors.some(known => errorMessage.toLowerCase().includes(known.toLowerCase()))) {
-          console.error("Error submitting form:", error);
+        // Check if it's a known validation error
+        const isKnownValidation = knownValidationErrors.some(
+          known => errorMessage.toLowerCase().includes(known.toLowerCase())
+        );
+
+        // Only show validation errors in toast, don't log them to console
+        if (isKnownValidation) {
+          toast.error(errorMessage);
+        } else {
+          // For unexpected errors, log to console and show generic message
+          console.error("Unexpected API error:", error);
+          toast.error("An unexpected error occurred. Please try again.");
         }
-      } else if (error instanceof Error) {
-        // For unexpected errors, we still want to log them
-        errorMessage = error.message;
-        console.error("Unexpected error:", error);
+      } else {
+        // For non-Axios errors, log and show generic message
+        console.error("Non-Axios error:", error);
+        toast.error("An unexpected error occurred. Please try again.");
       }
-      
-      toast.error(errorMessage);
     }
 
-    function isAxiosError(error: unknown): error is AxiosError<{ error: string }> {
-      return (typeof error === "object" && error !== null && "isAxiosError" in error && (error as AxiosError).isAxiosError === true);
-    }
+
   };
 
   const handleSearch = (value: string) => {

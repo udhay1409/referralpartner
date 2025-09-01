@@ -59,15 +59,19 @@ export async function PUT(
     const { id } = await params;
     const body = await request.json();
     
-    // Check if another student with the same email exists (excluding the current student)
+    // Check if another student with the same email or phone exists (excluding the current student)
     const existingStudent = await StudentLeads.findOne({
-      email: body.email,
+      $or: [
+        { email: body.email },
+        { phone: body.phone }
+      ],
       _id: { $ne: id } // Exclude current student from check
     });
     
     if (existingStudent) {
+      const field = existingStudent.email === body.email ? 'email' : 'phone';
       return NextResponse.json(
-        { success: false, error: "A student with this email already exists" },
+        { success: false, error: `A student with this ${field} already exists` },
         { status: 400 }
       );
     }

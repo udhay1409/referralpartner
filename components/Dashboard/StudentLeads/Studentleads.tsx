@@ -112,9 +112,7 @@ export const StudentLeads = () => {
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
   const searchParams = useSearchParams();
   const [studentLeads, setStudentLeads] = useState<StudentLead[]>([]);
-  const [referralPartners, setReferralPartners] = useState<ReferralPartner[]>(
-    []
-  );
+
   const [courseCategories, setCourseCategories] = useState<Category[]>([]);
   const [countryCategories, setCountryCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
@@ -150,6 +148,10 @@ export const StudentLeads = () => {
   const [editCourseName, setEditCourseName] = useState("");
   const [editCountryName, setEditCountryName] = useState("");
   const [explicitlyClosing, setExplicitlyClosing] = useState(false);
+  const [courseToDelete, setCourseToDelete] = useState<{ id: string; name: string } | null>(null);
+  const [countryToDelete, setCountryToDelete] = useState<{ id: string; name: string } | null>(null);
+  const [isDeleteCourseDialogOpen, setIsDeleteCourseDialogOpen] = useState(false);
+  const [isDeleteCountryDialogOpen, setIsDeleteCountryDialogOpen] = useState(false);
 
   const [formData, setFormData] = useState<FormData>({
     name: "",
@@ -167,11 +169,11 @@ export const StudentLeads = () => {
   });
 
   // Fetch functions
-  const fetchStudentLeads = async (page = 1, search = "") => {
+  const fetchStudentLeads = async (page = 1, search = "", all = false) => {
     try {
       setLoading(true);
       const response = await axios.get(
-        `/api/studentleads?page=${page}&limit=10&search=${search}`
+        `/api/studentleads?page=${page}&limit=10&search=${search}&all=${all}`
       );
       const data = response.data;
 
@@ -193,12 +195,18 @@ export const StudentLeads = () => {
     }
   };
 
+  const [allReferralPartners, setAllReferralPartners] = useState<ReferralPartner[]>([]);
+  const [activeReferralPartners, setActiveReferralPartners] = useState<ReferralPartner[]>([]);
+
   const fetchReferralPartners = async () => {
     try {
       const response = await axios.get("/api/referralpartner?all=true");
       const data = response.data;
       if (data.success) {
-        setReferralPartners(
+        // Store all referral partners
+        setAllReferralPartners(data.data);
+        // Store only active referral partners for the forms
+        setActiveReferralPartners(
           data.data.filter(
             (partner: ReferralPartner) => partner.status === "Active"
           )
@@ -228,7 +236,9 @@ export const StudentLeads = () => {
   };
 
   useEffect(() => {
-    fetchStudentLeads(currentPage, searchTerm);
+    // If there's a search term, fetch all results without pagination
+    const shouldFetchAll = searchTerm.length > 0;
+    fetchStudentLeads(currentPage, searchTerm, shouldFetchAll);
   }, [currentPage, searchTerm]);
 
   useEffect(() => {
@@ -367,14 +377,23 @@ export const StudentLeads = () => {
     }
   };
 
-  const handleDeleteCourse = async (id: string) => {
+  const handleDeleteCourse = async (id: string, name: string) => {
+    setCourseToDelete({ id, name });
+    setIsDeleteCourseDialogOpen(true);
+  };
+
+  const confirmDeleteCourse = async () => {
+    if (!courseToDelete) return;
+
     try {
       const response = await axios.delete(
-        `/api/studentleads/category?id=${id}`
+        `/api/studentleads/category?id=${courseToDelete.id}`
       );
       if (response.data.success) {
         toast.success("Course deleted successfully!");
         fetchCategories();
+        setIsDeleteCourseDialogOpen(false);
+        setCourseToDelete(null);
       }
     } catch (error: unknown) {
       const axiosError = error as { response?: { data?: { error?: string } } };
@@ -386,14 +405,23 @@ export const StudentLeads = () => {
     }
   };
 
-  const handleDeleteCountry = async (id: string) => {
+  const handleDeleteCountry = async (id: string, name: string) => {
+    setCountryToDelete({ id, name });
+    setIsDeleteCountryDialogOpen(true);
+  };
+
+  const confirmDeleteCountry = async () => {
+    if (!countryToDelete) return;
+
     try {
       const response = await axios.delete(
-        `/api/studentleads/category?id=${id}`
+        `/api/studentleads/category?id=${countryToDelete.id}`
       );
       if (response.data.success) {
         toast.success("Country deleted successfully!");
         fetchCategories();
+        setIsDeleteCountryDialogOpen(false);
+        setCountryToDelete(null);
       }
     } catch (error: unknown) {
       const axiosError = error as { response?: { data?: { error?: string } } };
@@ -503,14 +531,12 @@ export const StudentLeads = () => {
       } else {
         toast.error("An unexpected error occurred");
       }
-      // Do not print to console for duplicate email
+      // Do not print to console for known validation errors
       if (
         !(
           axiosError.response?.data?.error &&
           (axiosError.response.data.error.includes("duplicate") ||
-            axiosError.response.data.error
-              .toLowerCase()
-              .includes("email already exists"))
+            axiosError.response.data.error.toLowerCase().includes("already exists"))
         )
       ) {
         console.error("Error submitting form:", error);
@@ -783,7 +809,7 @@ export const StudentLeads = () => {
                           <SelectValue placeholder="Select referral partner" />
                         </SelectTrigger>
                         <SelectContent>
-                          {referralPartners.map((partner) => (
+                          {activeReferralPartners.map((partner) => (
                             <SelectItem key={partner._id} value={partner._id}>
                               {partner.name}
                             </SelectItem>
@@ -899,7 +925,7 @@ export const StudentLeads = () => {
                                     className="h-6 w-6 p-0 hover:bg-red-100"
                                     onClick={(e) => {
                                       e.stopPropagation();
-                                      handleDeleteCourse(course._id);
+                                      handleDeleteCourse(course._id, course.name);
                                     }}
                                   >
                                     <Trash2 className="h-3 w-3 text-red-500" />
@@ -1136,7 +1162,7 @@ export const StudentLeads = () => {
                                     className="h-6 w-6 p-0 hover:bg-red-100"
                                     onClick={(e) => {
                                       e.stopPropagation();
-                                      handleDeleteCountry(country._id);
+                                      handleDeleteCountry(country._id, country.name);
                                     }}
                                   >
                                     <Trash2 className="h-3 w-3 text-red-500" />
@@ -1451,7 +1477,7 @@ export const StudentLeads = () => {
                           <SelectValue placeholder="Select referral partner" />
                         </SelectTrigger>
                         <SelectContent>
-                          {referralPartners.map((partner) => (
+                          {activeReferralPartners.map((partner) => (
                             <SelectItem key={partner._id} value={partner._id}>
                               {partner.name}
                             </SelectItem>
@@ -1658,7 +1684,7 @@ export const StudentLeads = () => {
                 setViewingLead(null);
               }}
               studentLead={viewingLead}
-              referralPartners={referralPartners}
+              referralPartners={allReferralPartners}
             />
 
             {/* Delete Confirmation Dialog */}
@@ -1690,6 +1716,70 @@ export const StudentLeads = () => {
                     className="bg-red-600 hover:bg-red-700 focus:ring-red-600"
                   >
                     Delete Student Lead
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+
+            {/* Delete Course Confirmation Dialog */}
+            <AlertDialog
+              open={isDeleteCourseDialogOpen}
+              onOpenChange={setIsDeleteCourseDialogOpen}
+            >
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    This action cannot be undone. This will permanently delete the course{" "}
+                    <span className="font-semibold">{courseToDelete?.name}</span>
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel
+                    onClick={() => {
+                      setIsDeleteCourseDialogOpen(false);
+                      setCourseToDelete(null);
+                    }}
+                  >
+                    Cancel
+                  </AlertDialogCancel>
+                  <AlertDialogAction
+                    onClick={confirmDeleteCourse}
+                    className="bg-red-600 hover:bg-red-700 focus:ring-red-600"
+                  >
+                    Delete Course
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+
+            {/* Delete Country Confirmation Dialog */}
+            <AlertDialog
+              open={isDeleteCountryDialogOpen}
+              onOpenChange={setIsDeleteCountryDialogOpen}
+            >
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    This action cannot be undone. This will permanently delete the country{" "}
+                    <span className="font-semibold">{countryToDelete?.name}</span>
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel
+                    onClick={() => {
+                      setIsDeleteCountryDialogOpen(false);
+                      setCountryToDelete(null);
+                    }}
+                  >
+                    Cancel
+                  </AlertDialogCancel>
+                  <AlertDialogAction
+                    onClick={confirmDeleteCountry}
+                    className="bg-red-600 hover:bg-red-700 focus:ring-red-600"
+                  >
+                    Delete Country
                   </AlertDialogAction>
                 </AlertDialogFooter>
               </AlertDialogContent>
@@ -1738,7 +1828,7 @@ export const StudentLeads = () => {
                         </div>
                       </TableCell>
                       <TableCell>
-                        {referralPartners.find(
+                        {allReferralPartners.find(
                           (p) => p._id === lead.referralPartner
                         )?.name || ""}
                       </TableCell>

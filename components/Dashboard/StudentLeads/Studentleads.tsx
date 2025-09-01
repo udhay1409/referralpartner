@@ -86,6 +86,7 @@ interface Category {
   _id: string;
   name: string;
   type: "course" | "country";
+  isActive?: boolean;
 }
 
 interface FormData {
@@ -364,7 +365,7 @@ export const StudentLeads = () => {
         toast.error("Failed to update country");
       }
     }
-  };
+  }; 
 
   const handleDeleteCourse = async (id: string) => {
     try {
@@ -526,20 +527,34 @@ export const StudentLeads = () => {
 
   const handleEditLead = (lead: StudentLead) => {
     setEditingLead(lead);
-    setFormData({
+    // Make sure to populate both ID and name fields for course and country
+    const formDataWithNames = {
       name: lead.name,
       email: lead.email,
       phone: lead.phone,
       courseApplied: lead.courseApplied,
-      courseAppliedName: lead.courseAppliedName,
+      courseAppliedName: lead.courseAppliedName || '', // Ensure name is populated
       countryPreference: lead.countryPreference,
-      countryPreferenceName: lead.countryPreferenceName,
+      countryPreferenceName: lead.countryPreferenceName || '', // Ensure name is populated
       status: lead.status,
       description: lead.description || "",
       referralPartner: lead.referralPartner,
       commissionAmount: lead.commissionAmount,
       commissionStatus: lead.commissionStatus,
-    });
+    };
+
+    // Find and set the current course and country names from categories
+    const selectedCourse = courseCategories.find(c => c._id === lead.courseApplied);
+    const selectedCountry = countryCategories.find(c => c._id === lead.countryPreference);
+
+    if (selectedCourse) {
+      formDataWithNames.courseAppliedName = selectedCourse.name;
+    }
+    if (selectedCountry) {
+      formDataWithNames.countryPreferenceName = selectedCountry.name;
+    }
+
+    setFormData(formDataWithNames);
     setIsEditDialogOpen(true);
   };
 
@@ -1393,10 +1408,17 @@ export const StudentLeads = () => {
                         Course Applied <span className="text-red-500">*</span>
                       </Label>
                       <Select
-                        value={formData.courseApplied}
-                        onValueChange={(value) =>
-                          setFormData({ ...formData, courseApplied: value })
-                        }
+                        value={formData.courseAppliedName}
+                        onValueChange={(value) => {
+                          const selectedCourse = courseCategories.find(c => c.name === value);
+                          if (selectedCourse) {
+                            setFormData({
+                              ...formData,
+                              courseApplied: selectedCourse._id,
+                              courseAppliedName: selectedCourse.name
+                            });
+                          }
+                        }}
                       >
                         <SelectTrigger className="mt-2">
                           <SelectValue placeholder="Select course" />
@@ -1416,10 +1438,17 @@ export const StudentLeads = () => {
                         <span className="text-red-500">*</span>
                       </Label>
                       <Select
-                        value={formData.countryPreference}
-                        onValueChange={(value) =>
-                          setFormData({ ...formData, countryPreference: value })
-                        }
+                        value={formData.countryPreferenceName}
+                        onValueChange={(value) => {
+                          const selectedCountry = countryCategories.find(c => c.name === value);
+                          if (selectedCountry) {
+                            setFormData({
+                              ...formData,
+                              countryPreference: selectedCountry._id,
+                              countryPreferenceName: selectedCountry.name
+                            });
+                          }
+                        }}
                       >
                         <SelectTrigger className="mt-2">
                           <SelectValue placeholder="Select country" />

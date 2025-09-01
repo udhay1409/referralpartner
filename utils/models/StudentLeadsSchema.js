@@ -16,11 +16,13 @@ const StudentLeadsSchema = new mongoose.Schema({
     required: [true, 'Phone number is required'],
   },
   courseApplied: {
-    type: String,
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'StudentCategory',
     required: [true, 'Course Applied is required'],
-  },
+  }, 
   countryPreference: {
-    type: String,
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'StudentCategory',
     required: [true, 'Country Preference is required'],
   },
   status: {

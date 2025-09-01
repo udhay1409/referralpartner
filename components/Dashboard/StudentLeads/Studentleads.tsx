@@ -62,10 +62,13 @@ interface StudentLead {
   email: string;
   phone: string;
   courseApplied: string;
+  courseAppliedName: string;
   countryPreference: string;
+  countryPreferenceName: string;
   status: "New" | "In Progress" | "Applied" | "Admitted" | "Rejected";
   description?: string;
   referralPartner: string;
+  referralPartnerName: string;
   commissionAmount: number;
   commissionStatus: "Pending" | "Paid";
   createdAt: string;
@@ -89,8 +92,10 @@ interface FormData {
   name: string;
   email: string;
   phone: string;
-  courseApplied: string;
-  countryPreference: string;
+  courseApplied: string; // ID
+  courseAppliedName: string; // Display name
+  countryPreference: string; // ID
+  countryPreferenceName: string; // Display name
   status: "New" | "In Progress" | "Applied" | "Admitted" | "Rejected";
   description: string;
   referralPartner: string; // Just the ID of the referral partner
@@ -150,7 +155,9 @@ export const StudentLeads = () => {
     email: "",
     phone: "",
     courseApplied: "",
+    courseAppliedName: "",
     countryPreference: "",
+    countryPreferenceName: "",
     status: "New",
     description: "",
     referralPartner: "",
@@ -229,7 +236,7 @@ export const StudentLeads = () => {
   }, []);
 
   // Handle edit action from URL parameters
-  useEffect(() => {
+  useEffect(() => { 
     const action = searchParams.get("action");
     if (action === "edit") {
       const storedLead = sessionStorage.getItem("editStudentLead");
@@ -264,6 +271,7 @@ export const StudentLeads = () => {
         setShowAddCourse(false);
         setCourseDropdownOpen(false);
         fetchCategories();
+        fetchStudentLeads(currentPage, searchTerm); // Refresh table
       }
     } catch (error: unknown) {
       const axiosError = error as { response?: { data?: { error?: string } } };
@@ -290,6 +298,7 @@ export const StudentLeads = () => {
         setShowAddCountry(false);
         setCountryDropdownOpen(false);
         fetchCategories();
+        fetchStudentLeads(currentPage, searchTerm); // Refresh table
       }
     } catch (error: unknown) {
       const axiosError = error as { response?: { data?: { error?: string } } };
@@ -317,6 +326,7 @@ export const StudentLeads = () => {
         setEditCourseName("");
         setCourseDropdownOpen(false);
         fetchCategories();
+        fetchStudentLeads(currentPage, searchTerm); // Refresh table
       }
     } catch (error: unknown) {
       const axiosError = error as { response?: { data?: { error?: string } } };
@@ -344,6 +354,7 @@ export const StudentLeads = () => {
         setEditCountryName("");
         setCountryDropdownOpen(false);
         fetchCategories();
+        fetchStudentLeads(currentPage, searchTerm); // Refresh table
       }
     } catch (error: unknown) {
       const axiosError = error as { response?: { data?: { error?: string } } };
@@ -405,6 +416,7 @@ export const StudentLeads = () => {
     if (!formData.courseApplied) newErrors.courseApplied = "Course is required";
     if (!formData.countryPreference) newErrors.countryPreference = "Country is required";
     if (!formData.referralPartner) newErrors.referralPartner = "Referral Partner is required";
+    
     setErrors(newErrors);
     setTouched({
       name: true,
@@ -420,10 +432,18 @@ export const StudentLeads = () => {
     }
 
     try {
-      // Only send referralPartner as the id string
+      // Prepare payload - only include IDs and remove display names
       const payload = {
-        ...formData,
+        name: formData.name,
+        email: formData.email,
+        phone: formData.phone,
+        courseApplied: formData.courseApplied,
+        countryPreference: formData.countryPreference,
+        status: formData.status,
+        description: formData.description,
         referralPartner: formData.referralPartner,
+        commissionAmount: formData.commissionAmount,
+        commissionStatus: formData.commissionStatus
       };
       let result;
       if (editingLead) {
@@ -449,7 +469,9 @@ export const StudentLeads = () => {
           email: "",
           phone: "",
           courseApplied: "",
+          courseAppliedName: "",
           countryPreference: "",
+          countryPreferenceName: "",
           status: "New",
           description: "",
           referralPartner: "",
@@ -490,7 +512,9 @@ export const StudentLeads = () => {
       email: "",
       phone: "",
       courseApplied: "",
+      courseAppliedName: "",
       countryPreference: "",
+      countryPreferenceName: "",
       status: "New",
       description: "",
       referralPartner: "",
@@ -507,7 +531,9 @@ export const StudentLeads = () => {
       email: lead.email,
       phone: lead.phone,
       courseApplied: lead.courseApplied,
+      courseAppliedName: lead.courseAppliedName,
       countryPreference: lead.countryPreference,
+      countryPreferenceName: lead.countryPreferenceName,
       status: lead.status,
       description: lead.description || "",
       referralPartner: lead.referralPartner,
@@ -557,6 +583,8 @@ export const StudentLeads = () => {
     setSearchTerm(value);
     setCurrentPage(1);
   };
+
+  
 
 
 
@@ -713,7 +741,7 @@ export const StudentLeads = () => {
                       </Label>
                       <div className="mt-2 space-y-2">
                         <Select
-                          value={formData.courseApplied}
+                          value={formData.courseAppliedName}
                           onValueChange={(value) => {
                             if (value === "add_new_course") {
                               setEditingCourse(null);
@@ -721,15 +749,18 @@ export const StudentLeads = () => {
                               setShowAddCourse(true);
                               setNewCourseName("");
                               setCourseDropdownOpen(true);
-                              // Close country dropdown when course dropdown is opened
                               setCountryDropdownOpen(false);
                               setShowAddCountry(false);
                               setEditingCountry(null);
                             } else {
-                              setFormData({
-                                ...formData,
-                                courseApplied: value,
-                              });
+                              const selectedCourse = courseCategories.find(c => c.name === value);
+                              if (selectedCourse) {
+                                setFormData({
+                                  ...formData,
+                                  courseApplied: selectedCourse._id,
+                                  courseAppliedName: value
+                                });
+                              }
                               setCourseDropdownOpen(false);
                             }
                           }}
@@ -946,7 +977,7 @@ export const StudentLeads = () => {
                       </Label>
                       <div className="mt-2 space-y-2">
                         <Select
-                          value={formData.countryPreference}
+                          value={formData.countryPreferenceName}
                           onValueChange={(value) => {
                             if (value === "add_new_country") {
                               setEditingCountry(null);
@@ -954,15 +985,18 @@ export const StudentLeads = () => {
                               setShowAddCountry(true);
                               setNewCountryName("");
                               setCountryDropdownOpen(true);
-                              // Close course dropdown when country dropdown is opened
                               setCourseDropdownOpen(false);
                               setShowAddCourse(false);
                               setEditingCourse(null);
                             } else {
-                              setFormData({
-                                ...formData,
-                                countryPreference: value,
-                              });
+                              const selectedCountry = countryCategories.find(c => c.name === value);
+                              if (selectedCountry) {
+                                setFormData({
+                                  ...formData,
+                                  countryPreference: selectedCountry._id,
+                                  countryPreferenceName: value
+                                });
+                              }
                               setCountryDropdownOpen(false);
                             }
                           }}
@@ -1261,10 +1295,11 @@ export const StudentLeads = () => {
                       type="button"
                       variant="outline"
                       onClick={() => setIsDialogOpen(false)}
+                      className="cursor-pointer"
                     >
                       Cancel
                     </Button>
-                    <Button className="bg-[#1A73E8] hover:bg-[#1669C1]" type="submit">Create Student Lead</Button>
+                    <Button className="bg-[#1A73E8] hover:bg-[#1669C1] cursor-pointer" type="submit">Create Student Lead</Button>
                   </div>
                 </form>
               </DialogContent>
@@ -1499,7 +1534,9 @@ export const StudentLeads = () => {
                           email: "",
                           phone: "",
                           courseApplied: "",
+                          courseAppliedName: "",
                           countryPreference: "",
+                          countryPreferenceName: "",
                           status: "New",
                           description: "",
                           referralPartner: "",
@@ -1586,8 +1623,8 @@ export const StudentLeads = () => {
                       <TableCell className="font-medium">{lead.name}</TableCell>
                       <TableCell>{lead.email}</TableCell>
                       <TableCell>{lead.phone}</TableCell>
-                      <TableCell>{lead.courseApplied}</TableCell>
-                      <TableCell>{lead.countryPreference}</TableCell>
+                      <TableCell>{lead.courseAppliedName}</TableCell>
+                      <TableCell>{lead.countryPreferenceName}</TableCell>
                       <TableCell>
                         <div className="flex flex-col-2 gap-1">
                          

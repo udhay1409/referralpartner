@@ -53,28 +53,43 @@ export async function GET(request: NextRequest) {
     }
 
     const studentLeads = await StudentLeads.find(query)
+      .populate('courseApplied', 'name')
+      .populate('countryPreference', 'name')
+      .populate('referralPartner', 'name')
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limit);
 
-    // Populate referral partner names
-    for (const lead of studentLeads) {
-      if (lead.referralPartner) {
-        const partner = await ReferralPartner.findById(lead.referralPartner);
-        if (partner) {
-          lead.referralPartner = {
-            id: partner._id,
-            name: partner.name
-          };
-        }
+    // Transform the populated data
+    const transformedLeads = studentLeads.map(lead => {
+      const transformedLead = lead.toObject();
+      
+      // Transform course
+      if (transformedLead.courseApplied) {
+        transformedLead.courseAppliedName = transformedLead.courseApplied.name;
+        transformedLead.courseApplied = transformedLead.courseApplied._id;
       }
-    }
+
+      // Transform country
+      if (transformedLead.countryPreference) {
+        transformedLead.countryPreferenceName = transformedLead.countryPreference.name;
+        transformedLead.countryPreference = transformedLead.countryPreference._id;
+      }
+
+      // Transform referral partner
+      if (transformedLead.referralPartner) {
+        transformedLead.referralPartnerName = transformedLead.referralPartner.name;
+        transformedLead.referralPartner = transformedLead.referralPartner._id;
+      }
+
+      return transformedLead;
+    });
 
     const total = await StudentLeads.countDocuments(query);
 
     return NextResponse.json({
       success: true,
-      data: studentLeads,
+      data: transformedLeads,
       pagination: {
         page,
         limit,

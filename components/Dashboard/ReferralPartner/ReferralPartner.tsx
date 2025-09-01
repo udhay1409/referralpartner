@@ -385,7 +385,7 @@ export const ReferralPartner = () => {
               <DialogTrigger asChild>
                 <Button
                   onClick={handleAddPartner}
-                  className="bg-[#1A73E8] hover:bg-[#1669C1]"
+                  className="bg-[#1A73E8] hover:bg-[#1669C1] cursor-pointer"
                 >
                   <Plus className="mr-2 h-4 w-4" />
                   Add Referral Partner
@@ -607,11 +607,12 @@ export const ReferralPartner = () => {
                         type="button"
                         variant="outline"
                         onClick={() => setIsDialogOpen(false)}
+                        className="cursor-pointer"
                       >
                         Cancel
                       </Button>
                       <Button
-                        className="bg-[#1A73E8] hover:bg-[#1669C1]"
+                        className="bg-[#1A73E8] hover:bg-[#1669C1] cursor-pointer"
                         type="submit"
                       >
                         Create Partner

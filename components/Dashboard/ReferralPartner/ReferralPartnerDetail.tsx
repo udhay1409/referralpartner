@@ -18,7 +18,7 @@ import {
   Pagination,
   PaginationContent,
   PaginationItem,
-  PaginationLink,
+  PaginationLink,            
   PaginationNext,
   PaginationPrevious,
 } from "@/components/ui/pagination";
@@ -74,10 +74,13 @@ interface StudentLead {
   email: string;
   phone: string;
   courseApplied: string;
+  courseAppliedName: string;
   countryPreference: string;
+  countryPreferenceName: string;
   status: "New" | "In Progress" | "Applied" | "Admitted" | "Rejected";
   description?: string;
   referralPartner: string;
+  referralPartnerName: string;
   commissionAmount: number;
   commissionStatus: "Pending" | "Paid";
   createdAt: string;
@@ -550,8 +553,8 @@ export const ReferralPartnerDetail = () => {
                       <TableCell className="font-medium">{lead.name}</TableCell>
                       <TableCell>{lead.email}</TableCell>
                       <TableCell>{lead.phone}</TableCell>
-                      <TableCell>{lead.courseApplied}</TableCell>
-                      <TableCell>{lead.countryPreference}</TableCell>
+                      <TableCell>{lead.courseAppliedName || lead.courseApplied}</TableCell>
+                      <TableCell>{lead.countryPreferenceName || lead.countryPreference}</TableCell>
                       <TableCell>
                         <Badge variant={getStatusBadgeVariant(lead.status)}>
                           {lead.status}
@@ -580,11 +583,13 @@ export const ReferralPartnerDetail = () => {
                             size="sm"
                             onClick={() => handleViewLead(lead)}
                             title="View Details"
+                            className="cursor-pointer"
                           >
                             <Eye className="h-4 w-4" />
                           </Button>
                           <Button
                             variant="ghost"
+                            className="cursor-pointer"
                             size="sm"
                             onClick={() => {
                               // Store the lead data in sessionStorage for the edit modal
@@ -605,7 +610,7 @@ export const ReferralPartnerDetail = () => {
                               handleDeleteLead(lead._id, lead.name)
                             }
                             title="Delete Lead"
-                            className="text-red-500 hover:text-red-700"
+                            className="text-red-500 hover:text-red-700 cursor-pointer"
                           >
                             <Trash2 className="h-4 w-4" />
                           </Button>

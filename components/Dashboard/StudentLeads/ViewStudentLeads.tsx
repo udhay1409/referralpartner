@@ -17,10 +17,13 @@ interface StudentLead {
   email: string;
   phone: string;
   courseApplied: string;
+  courseAppliedName: string;
   countryPreference: string;
+  countryPreferenceName: string;
   status: "New" | "In Progress" | "Applied" | "Admitted" | "Rejected";
   description?: string;
   referralPartner: string;
+  referralPartnerName: string;
   commissionAmount: number;
   commissionStatus: "Pending" | "Paid";
   createdAt: string;

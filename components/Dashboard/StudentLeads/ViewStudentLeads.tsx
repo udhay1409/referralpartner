@@ -161,14 +161,14 @@ export const ViewStudentLeads: React.FC<ViewStudentLeadsProps> = ({
                   <GraduationCap className="h-5 w-5 text-gray-500 mt-0.5" />
                   <div className="flex-1">
                     <p className="text-sm text-muted-foreground">Course Applied</p>
-                    <p className="font-medium text-gray-900">{studentLead.courseApplied}</p>
+                    <p className="font-medium text-gray-900">{studentLead.courseAppliedName || studentLead.courseApplied}</p>
                   </div>
                 </div>
                 <div className="flex items-start space-x-3">
                   <Globe className="h-5 w-5 text-gray-500 mt-0.5" />
                   <div className="flex-1">
                     <p className="text-sm text-muted-foreground">Country Preference</p>
-                    <p className="font-medium text-gray-900">{studentLead.countryPreference}</p>
+                    <p className="font-medium text-gray-900">{studentLead.countryPreferenceName || studentLead.countryPreference}</p>
                   </div>
                 </div>
                 <div className="flex items-start space-x-3">

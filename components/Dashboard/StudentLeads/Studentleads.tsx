@@ -8,8 +8,8 @@ import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 
-
-import {  Table,
+import {
+  Table,
   TableBody,
   TableCell,
   TableHead,
@@ -17,17 +17,17 @@ import {  Table,
   TableRow,
 } from "@/components/ui/table";
 import {
-  Dialog, 
+  Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
 
-
-import {  Select,
+import {
+  Select,
   SelectContent,
-  SelectItem, 
+  SelectItem,
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
@@ -237,7 +237,7 @@ export const StudentLeads = () => {
   }, []);
 
   // Handle edit action from URL parameters
-  useEffect(() => { 
+  useEffect(() => {
     const action = searchParams.get("action");
     if (action === "edit") {
       const storedLead = sessionStorage.getItem("editStudentLead");
@@ -365,7 +365,7 @@ export const StudentLeads = () => {
         toast.error("Failed to update country");
       }
     }
-  }; 
+  };
 
   const handleDeleteCourse = async (id: string) => {
     try {
@@ -415,9 +415,11 @@ export const StudentLeads = () => {
     if (!formData.email) newErrors.email = "Email is required";
     if (!formData.phone) newErrors.phone = "Phone is required";
     if (!formData.courseApplied) newErrors.courseApplied = "Course is required";
-    if (!formData.countryPreference) newErrors.countryPreference = "Country is required";
-    if (!formData.referralPartner) newErrors.referralPartner = "Referral Partner is required";
-    
+    if (!formData.countryPreference)
+      newErrors.countryPreference = "Country is required";
+    if (!formData.referralPartner)
+      newErrors.referralPartner = "Referral Partner is required";
+
     setErrors(newErrors);
     setTouched({
       name: true,
@@ -444,7 +446,7 @@ export const StudentLeads = () => {
         description: formData.description,
         referralPartner: formData.referralPartner,
         commissionAmount: formData.commissionAmount,
-        commissionStatus: formData.commissionStatus
+        commissionStatus: formData.commissionStatus,
       };
       let result;
       if (editingLead) {
@@ -461,7 +463,11 @@ export const StudentLeads = () => {
       }
 
       if (result.success) {
-        toast.success(editingLead ? "Student lead updated successfully!" : "Student lead created successfully!");
+        toast.success(
+          editingLead
+            ? "Student lead updated successfully!"
+            : "Student lead created successfully!"
+        );
         setIsDialogOpen(false);
         setIsEditDialogOpen(false);
         setEditingLead(null);
@@ -486,7 +492,9 @@ export const StudentLeads = () => {
       if (axiosError.response?.data?.error) {
         if (
           axiosError.response.data.error.includes("duplicate") ||
-          axiosError.response.data.error.toLowerCase().includes("email already exists")
+          axiosError.response.data.error
+            .toLowerCase()
+            .includes("email already exists")
         ) {
           toast.error("Student already exists");
         } else {
@@ -497,9 +505,13 @@ export const StudentLeads = () => {
       }
       // Do not print to console for duplicate email
       if (
-        !(axiosError.response?.data?.error &&
+        !(
+          axiosError.response?.data?.error &&
           (axiosError.response.data.error.includes("duplicate") ||
-            axiosError.response.data.error.toLowerCase().includes("email already exists")))
+            axiosError.response.data.error
+              .toLowerCase()
+              .includes("email already exists"))
+        )
       ) {
         console.error("Error submitting form:", error);
       }
@@ -533,9 +545,9 @@ export const StudentLeads = () => {
       email: lead.email,
       phone: lead.phone,
       courseApplied: lead.courseApplied,
-      courseAppliedName: lead.courseAppliedName || '', // Ensure name is populated
+      courseAppliedName: lead.courseAppliedName || "", // Ensure name is populated
       countryPreference: lead.countryPreference,
-      countryPreferenceName: lead.countryPreferenceName || '', // Ensure name is populated
+      countryPreferenceName: lead.countryPreferenceName || "", // Ensure name is populated
       status: lead.status,
       description: lead.description || "",
       referralPartner: lead.referralPartner,
@@ -544,8 +556,12 @@ export const StudentLeads = () => {
     };
 
     // Find and set the current course and country names from categories
-    const selectedCourse = courseCategories.find(c => c._id === lead.courseApplied);
-    const selectedCountry = countryCategories.find(c => c._id === lead.countryPreference);
+    const selectedCourse = courseCategories.find(
+      (c) => c._id === lead.courseApplied
+    );
+    const selectedCountry = countryCategories.find(
+      (c) => c._id === lead.countryPreference
+    );
 
     if (selectedCourse) {
       formDataWithNames.courseAppliedName = selectedCourse.name;
@@ -599,10 +615,6 @@ export const StudentLeads = () => {
     setCurrentPage(1);
   };
 
-  
-
-
-
   const getCommissionStatusBadgeVariant = (status: string) => {
     return status === "Paid" ? "default" : "secondary";
   };
@@ -612,16 +624,16 @@ export const StudentLeads = () => {
       case "New":
         return "default";
       case "In Progress":
-        return "secondary"; 
+        return "secondary";
       case "Applied":
-        return "secondary"; 
+        return "secondary";
       case "Admitted":
         return "default";
       case "Rejected":
         return "destructive";
       default:
         return "default";
-    } 
+    }
   };
 
   return (
@@ -646,7 +658,10 @@ export const StudentLeads = () => {
 
             <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
               <DialogTrigger asChild>
-                <Button onClick={handleAddLead} className="bg-[#1A73E8] hover:bg-[#1669C1] cursor-pointer">
+                <Button
+                  onClick={handleAddLead}
+                  className="bg-[#1A73E8] hover:bg-[#1669C1] cursor-pointer"
+                >
                   <Plus className="mr-2 h-4 w-4" />
                   Add Student Lead
                 </Button>
@@ -670,8 +685,14 @@ export const StudentLeads = () => {
                           setErrors((prev) => ({ ...prev, name: "" }));
                         }}
                         placeholder="Enter student name"
-                        className={`mt-2 ${touched.name && errors.name ? 'border-red-500 focus:border-red-500' : ''}`}
-                        onBlur={() => setTouched((prev) => ({ ...prev, name: true }))}
+                        className={`mt-2 ${
+                          touched.name && errors.name
+                            ? "border-red-500 focus:border-red-500"
+                            : ""
+                        }`}
+                        onBlur={() =>
+                          setTouched((prev) => ({ ...prev, name: true }))
+                        }
                       />
                     </div>
                     <div>
@@ -688,8 +709,14 @@ export const StudentLeads = () => {
                           setErrors((prev) => ({ ...prev, email: "" }));
                         }}
                         placeholder="Enter email address"
-                        className={`mt-2 ${touched.email && errors.email ? 'border-red-500 focus:border-red-500' : ''}`}
-                        onBlur={() => setTouched((prev) => ({ ...prev, email: true }))}
+                        className={`mt-2 ${
+                          touched.email && errors.email
+                            ? "border-red-500 focus:border-red-500"
+                            : ""
+                        }`}
+                        onBlur={() =>
+                          setTouched((prev) => ({ ...prev, email: true }))
+                        }
                       />
                     </div>
                   </div>
@@ -708,7 +735,11 @@ export const StudentLeads = () => {
                           setErrors((prev) => ({ ...prev, phone: "" }));
                         }}
                         placeholder="Enter phone number"
-                        className={`mt-2 ${touched.phone && errors.phone ? 'border-red-500 focus:border-red-500' : ''}`}
+                        className={`mt-2 ${
+                          touched.phone && errors.phone
+                            ? "border-red-500 focus:border-red-500"
+                            : ""
+                        }`}
                         type="tel"
                         inputMode="numeric"
                         onKeyPress={(e) => {
@@ -716,7 +747,9 @@ export const StudentLeads = () => {
                             e.preventDefault();
                           }
                         }}
-                        onBlur={() => setTouched((prev) => ({ ...prev, phone: true }))}
+                        onBlur={() =>
+                          setTouched((prev) => ({ ...prev, phone: true }))
+                        }
                       />
                     </div>
                     <div>
@@ -730,11 +763,23 @@ export const StudentLeads = () => {
                             ...formData,
                             referralPartner: value,
                           });
-                          setTouched((prev) => ({ ...prev, referralPartner: true }));
-                          setErrors((prev) => ({ ...prev, referralPartner: "" }));
+                          setTouched((prev) => ({
+                            ...prev,
+                            referralPartner: true,
+                          }));
+                          setErrors((prev) => ({
+                            ...prev,
+                            referralPartner: "",
+                          }));
                         }}
                       >
-                        <SelectTrigger className={`mt-2 ${touched.referralPartner && errors.referralPartner ? 'border-red-500 focus:border-red-500' : ''}`}>
+                        <SelectTrigger
+                          className={`mt-2 ${
+                            touched.referralPartner && errors.referralPartner
+                              ? "border-red-500 focus:border-red-500"
+                              : ""
+                          }`}
+                        >
                           <SelectValue placeholder="Select referral partner" />
                         </SelectTrigger>
                         <SelectContent>
@@ -768,12 +813,14 @@ export const StudentLeads = () => {
                               setShowAddCountry(false);
                               setEditingCountry(null);
                             } else {
-                              const selectedCourse = courseCategories.find(c => c.name === value);
+                              const selectedCourse = courseCategories.find(
+                                (c) => c.name === value
+                              );
                               if (selectedCourse) {
                                 setFormData({
                                   ...formData,
                                   courseApplied: selectedCourse._id,
-                                  courseAppliedName: value
+                                  courseAppliedName: value,
                                 });
                               }
                               setCourseDropdownOpen(false);
@@ -918,7 +965,7 @@ export const StudentLeads = () => {
                                     type="button"
                                     onClick={handleAddCourse}
                                     size="sm"
-                                    className=" text-white bg-[#1A73E8] hover:bg-[#1669C1]"
+                                    className=" text-white bg-[#1A73E8] hover:bg-[#1669C1] cursor-pointer"
                                   >
                                     <Plus className="h-4 w-4 mr-1" />
                                     Add
@@ -970,8 +1017,7 @@ export const StudentLeads = () => {
                                     type="button"
                                     onClick={handleEditCourse}
                                     size="sm"
-                                    className=" text-white bg-[#1A73E8] hover:bg-[#1669C1]"
-                                    
+                                    className=" text-white bg-[#1A73E8] hover:bg-[#1669C1]  cursor-pointer"
                                   >
                                     <Edit2 className="h-4 w-4 mr-1" />
                                     Update
@@ -1004,12 +1050,14 @@ export const StudentLeads = () => {
                               setShowAddCourse(false);
                               setEditingCourse(null);
                             } else {
-                              const selectedCountry = countryCategories.find(c => c.name === value);
+                              const selectedCountry = countryCategories.find(
+                                (c) => c.name === value
+                              );
                               if (selectedCountry) {
                                 setFormData({
                                   ...formData,
                                   countryPreference: selectedCountry._id,
-                                  countryPreferenceName: value
+                                  countryPreferenceName: value,
                                 });
                               }
                               setCountryDropdownOpen(false);
@@ -1154,7 +1202,7 @@ export const StudentLeads = () => {
                                     type="button"
                                     onClick={handleAddCountry}
                                     size="sm"
-                                    className=" text-white bg-[#1A73E8] hover:bg-[#1669C1]"
+                                    className=" text-white bg-[#1A73E8] hover:bg-[#1669C1]  cursor-pointer"
                                   >
                                     <Plus className="h-4 w-4 mr-1" />
                                     Add
@@ -1206,7 +1254,7 @@ export const StudentLeads = () => {
                                     type="button"
                                     onClick={handleEditCountry}
                                     size="sm"
-                                    className=" text-white bg-[#1A73E8] hover:bg-[#1669C1]"
+                                    className=" text-white bg-[#1A73E8] hover:bg-[#1669C1]  cursor-pointer"
                                   >
                                     <Edit2 className="h-4 w-4 mr-1" />
                                     Update
@@ -1275,15 +1323,21 @@ export const StudentLeads = () => {
                       id="commissionAmount"
                       type="number"
                       min="0"
-                      step="0.01"
-                      value={formData.commissionAmount}
+                      value={
+                        formData.commissionAmount === 0
+                          ? ""
+                          : formData.commissionAmount
+                      }
                       onChange={(e) =>
                         setFormData({
                           ...formData,
-                          commissionAmount: parseFloat(e.target.value) || 0,
+                          commissionAmount:
+                            e.target.value === ""
+                              ? 0
+                              : parseFloat(e.target.value),
                         })
                       }
-                      placeholder="Enter commission amount"
+                      placeholder="Enter commission amount (₹)"
                       className="mt-2"
                     />
                   </div>
@@ -1314,7 +1368,12 @@ export const StudentLeads = () => {
                     >
                       Cancel
                     </Button>
-                    <Button className="bg-[#1A73E8] hover:bg-[#1669C1] cursor-pointer" type="submit">Create Student Lead</Button>
+                    <Button
+                      className="bg-[#1A73E8] hover:bg-[#1669C1] cursor-pointer"
+                      type="submit"
+                    >
+                      Create Student Lead
+                    </Button>
                   </div>
                 </form>
               </DialogContent>
@@ -1410,12 +1469,14 @@ export const StudentLeads = () => {
                       <Select
                         value={formData.courseAppliedName}
                         onValueChange={(value) => {
-                          const selectedCourse = courseCategories.find(c => c.name === value);
+                          const selectedCourse = courseCategories.find(
+                            (c) => c.name === value
+                          );
                           if (selectedCourse) {
                             setFormData({
                               ...formData,
                               courseApplied: selectedCourse._id,
-                              courseAppliedName: selectedCourse.name
+                              courseAppliedName: selectedCourse.name,
                             });
                           }
                         }}
@@ -1440,12 +1501,14 @@ export const StudentLeads = () => {
                       <Select
                         value={formData.countryPreferenceName}
                         onValueChange={(value) => {
-                          const selectedCountry = countryCategories.find(c => c.name === value);
+                          const selectedCountry = countryCategories.find(
+                            (c) => c.name === value
+                          );
                           if (selectedCountry) {
                             setFormData({
                               ...formData,
                               countryPreference: selectedCountry._id,
-                              countryPreferenceName: selectedCountry.name
+                              countryPreferenceName: selectedCountry.name,
                             });
                           }
                         }}
@@ -1529,7 +1592,7 @@ export const StudentLeads = () => {
                           commissionAmount: parseFloat(e.target.value) || 0,
                         })
                       }
-                      placeholder="Enter commission amount"
+                      placeholder="Enter commission amount (₹)"
                       className="mt-2"
                     />
                   </div>
@@ -1576,7 +1639,12 @@ export const StudentLeads = () => {
                     >
                       Cancel
                     </Button>
-                    <Button className="bg-[#1A73E8] hover:bg-[#1669C1]" type="submit">Update Student Lead</Button>
+                    <Button
+                      className="bg-[#1A73E8] hover:bg-[#1669C1]"
+                      type="submit"
+                    >
+                      Update Student Lead
+                    </Button>
                   </div>
                 </form>
               </DialogContent>
@@ -1656,17 +1724,24 @@ export const StudentLeads = () => {
                       <TableCell>{lead.countryPreferenceName}</TableCell>
                       <TableCell>
                         <div className="flex flex-col-2 gap-1">
-                         
                           <Badge
                             variant={getStatusBadgeVariant(lead.status)}
-                            className={`text-xs${lead.status === "Admitted" || lead.status === "In Progress" ? " bg-[#1A73E8] text-white" : ""}`}
-                          >{lead.status}
+                            className={`text-xs${
+                              lead.status === "Admitted" ||
+                              lead.status === "In Progress"
+                                ? " bg-[#1A73E8] text-white"
+                                : ""
+                            }`}
+                          >
+                            {lead.status}
                           </Badge>
                         </div>
                       </TableCell>
-                      <TableCell>{
-                        referralPartners.find((p) => p._id === lead.referralPartner)?.name || ""
-                      }</TableCell>
+                      <TableCell>
+                        {referralPartners.find(
+                          (p) => p._id === lead.referralPartner
+                        )?.name || ""}
+                      </TableCell>
 
                       <TableCell>
                         <div className="flex flex-col-2 gap-1">
